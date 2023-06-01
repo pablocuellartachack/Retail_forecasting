@@ -47,9 +47,6 @@ library(tseries)
 library(lubridate)
 install.packages("MLmetrics")
 library(MLmetrics)
-install.packages("hrbrthemes")
-install.packages("gdtools")
-library(hrbrthemes)
 options(xts.warn_dplyr_breaks_lag = FALSE)
 
 # Loading the data
@@ -72,6 +69,7 @@ monthly_average <- shoe_sales %>%
 # Transforming the data to time series
 time_series <- ts(monthly_average$avg_sales, start = c(2014, 1), end=c(2016, 7), frequency = 12)
 summary(time_series)
+
 autoplot(time_series) +
   ylab("AVG Count Of Sales") +
   ggtitle("Plot: Shoe Sales Time Series") +
@@ -148,13 +146,14 @@ test_data <- tail(diff_time_series, 6)
 print(test_data)
 train_data_ts <- ts(train_data, start=c(2014, 2), end=c(2016, 1), frequency=12)
 test_data_ts <- ts(test_data, start=c(2016, 2), end=c(2016, 7), frequency=12)
-
 autoplot(train_data)
+
 autoplot(train_data_ts) +
   ylab("AVG Count Of Sales") +
   ggtitle("Plot: (Training Set) Shoe Sales ") +
   geom_line(color="#69b3a2") +
   theme_minimal()
+
 autoplot(test_data_ts) +
   ylab("AVG Count Of Sales") +
   ggtitle("Plot: (Test Set) Shoe Sales ") +
@@ -165,16 +164,23 @@ autoplot(diff_time_series)
 
 # Fitting the SMA model
 fit_sma <- SMA(train_data_ts, n = 3)
-tail(round(sales_sma,2),10)
-autoplot(fit_sma)
+print(summary(fit_sma))
+checkresiduals(fit_sma)
 
-# Forecasting with SMA model & evaluating with MAPE/MAE/RMSE
+autoplot(fit_sma) +
+  ylab("AVG Count Of Sales") +
+  ggtitle("Plot: Shoe Sales SMA Fitting") +
+  geom_line(color="#69b3a2") +
+  theme_minimal()
+
+# Forecasting with SMA model
 sales_sma_forecast <- forecast(fit_sma, h = 6)
 autoplot(sales_sma_forecast) +
   ylab("AVG Count Of Sales") +
   ggtitle("Plot: Shoe Sales SMA Forecast") +
   theme_minimal()
 accuracy(sales_sma_forecast)
+
 autoplot(diff_time_series) +
   autolayer(sales_arima_forecast, series = "ARIMA Forecast") +
   xlab("Year") +
@@ -182,6 +188,7 @@ autoplot(diff_time_series) +
   labs(color = "Forecast Type") +
   scale_color_manual(values = c("red"))
 
+# Evaluating SMA model with MAPE/MAE/RMSE
 print(summary(sales_sma_forecast$mean)) # Mean = 0.40
 test_data$sma <- rep(0.396, 6)
 sma_mape <- MAPE(test_data$sma, unlist(test_data)[1:6])
@@ -195,18 +202,23 @@ print(test_data)
 # Fitting the ARIMA model
 fit_arima <- auto.arima(train_data_ts, approximation = FALSE, trace = TRUE) # Residual SD = 30.36
 print(summary(fit_arima))
-length(fit_arima)
 checkresiduals(fit_arima)
-autoplot(fit_arima)
+
+autoplot(fit_arima) +
+  ylab("AVG Count Of Sales") +
+  ggtitle("Plot: Shoe Sales ARIMA Fitting") +
+  geom_line(color="#69b3a2") +
+  theme_minimal()
 sqrt(921.9)
 
-# Forecasting with ARIMA model & evaluating with MAPE/MAE/RMSE
+# Forecasting with ARIMA model
 sales_arima_forecast <- forecast(fit_arima, h = 6)
 accuracy(sales_arima_forecast)
 autoplot(sales_arima_forecast) +
   ylab("AVG Count Of Sales") +
   ggtitle("Plot: Shoe Sales ARIMA Forecast") +
   theme_minimal()
+
 autoplot(diff_time_series) +
   autolayer(sales_arima_forecast, series = "ARIMA Forecast") +
   xlab("Year") +
@@ -214,6 +226,7 @@ autoplot(diff_time_series) +
   labs(color = "Forecast Type") +
   scale_color_manual(values = c("green"))
 
+# Evaluating ARIMA model with MAPE/MAE/RMSE
 print(summary(sales_arima_forecast$mean)) # Mean = 2.46
 test_data$arima <- rep(2.46, 6)
 arima_mape <- MAPE(test_data$arima, unlist(test_data)[1:6])
