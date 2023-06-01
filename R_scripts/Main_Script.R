@@ -45,9 +45,11 @@ library(xts)
 library(TSstudio)
 library(tseries)
 library(lubridate)
-library(ggplot2)
 install.packages("MLmetrics")
 library(MLmetrics)
+install.packages("hrbrthemes")
+install.packages("gdtools")
+library(hrbrthemes)
 options(xts.warn_dplyr_breaks_lag = FALSE)
 
 # Loading the data
@@ -69,24 +71,35 @@ monthly_average <- shoe_sales %>%
 
 # Transforming the data to time series
 time_series <- ts(monthly_average$avg_sales, start = c(2014, 1), end=c(2016, 7), frequency = 12)
-autoplot(time_series)
-print(time_series)
+summary(time_series)
+autoplot(time_series) +
+  ylab("AVG Count Of Sales") +
+  ggtitle("Plot: Shoe Sales Time Series") +
+  geom_line(color="#69b3a2") +
+  geom_hline(yintercept = 90.46, color="orange") +
+  theme_minimal()
 
 # Visualizing the seasonality
 ggseasonplot(time_series) +
-  ylab("$ million") +
-  ggtitle("Plot: Shoe Sales Seasonality")
+  ylab("AVG Count Of Sales") +
+  ggtitle("Plot: Shoe Sales Seasonality") +
+  theme_minimal()
 
 # Visualizing the trend
 ggsubseriesplot(time_series) +
-  ylab("$ million") +
-  ggtitle("Plot: Shoe Sales Trend")
+  ylab("Trend Line") +
+  ggtitle("Plot: Shoe Sales Trend") +
+  geom_line(color="#69b3a2") +
+  theme_minimal()
 print(time_series)
 
 # Decomposing & visualizing the time series
 stl_time_series <- stl(time_series, s.window = "periodic")
-autoplot(stl_time_series)
-autoplot(time_series)
+autoplot(stl_time_series) +
+  ggtitle("Plot: (Decomposed) Shoe Sales") +
+  geom_line(color="#69b3a2") +
+  theme_minimal()
+
 seasonal <- stl_time_series$time.series[, "seasonal"]
 plot(seasonal)
 trend <- stl_time_series$time.series[, "trend"]
@@ -99,10 +112,15 @@ plot(remainder)
 adf.test(time_series) # p-value = .7739 (Means the Null hypothesis is TRUE)
 
 # Making the time series stationary
-plot.ts(time_series)
-
 diff_time_series <- diff(time_series)
-autoplot(diff_time_series)
+summary(diff_time_series)
+autoplot(diff_time_series) +
+  ylab("AVG Count Of Sales") +
+  ggtitle("Plot: (Differenced) Shoe Sales ") +
+  geom_line(color="#69b3a2") +
+  geom_hline(yintercept = 1.114, color="orange") +
+  theme_minimal()
+
 print(diff_time_series)
 adf.test(diff_time_series) # p-value = 0.024 (Null hypothesis = False = stationary series)
 
@@ -132,9 +150,16 @@ train_data_ts <- ts(train_data, start=c(2014, 2), end=c(2016, 1), frequency=12)
 test_data_ts <- ts(test_data, start=c(2016, 2), end=c(2016, 7), frequency=12)
 
 autoplot(train_data)
-autoplot(train_data_ts)
-print(train_data_ts)
-autoplot(test_data_ts)
+autoplot(train_data_ts) +
+  ylab("AVG Count Of Sales") +
+  ggtitle("Plot: (Training Set) Shoe Sales ") +
+  geom_line(color="#69b3a2") +
+  theme_minimal()
+autoplot(test_data_ts) +
+  ylab("AVG Count Of Sales") +
+  ggtitle("Plot: (Test Set) Shoe Sales ") +
+  geom_line(color="#69b3a2") +
+  theme_minimal()
 print(test_data_ts)
 autoplot(diff_time_series)
 
@@ -144,8 +169,11 @@ tail(round(sales_sma,2),10)
 autoplot(fit_sma)
 
 # Forecasting with SMA model & evaluating with MAPE/MAE/RMSE
-sales_sma_forecast <- forecast(fit_sma, h = length(test_data))
-autoplot(sales_sma_forecast)
+sales_sma_forecast <- forecast(fit_sma, h = 6)
+autoplot(sales_sma_forecast) +
+  ylab("AVG Count Of Sales") +
+  ggtitle("Plot: Shoe Sales SMA Forecast") +
+  theme_minimal()
 accuracy(sales_sma_forecast)
 autoplot(diff_time_series) +
   autolayer(sales_arima_forecast, series = "ARIMA Forecast") +
@@ -162,19 +190,23 @@ sma_mae <- mean(abs(test_data$sma - unlist(test_data)[1:6]))
 sma_mae
 sma_rmse <- sqrt(mean(test_data$sma - unlist(test_data)[1:6])^2)
 sma_rmse
-
 print(test_data)
 
 # Fitting the ARIMA model
 fit_arima <- auto.arima(train_data_ts, approximation = FALSE, trace = TRUE) # Residual SD = 30.36
 print(summary(fit_arima))
+length(fit_arima)
 checkresiduals(fit_arima)
 autoplot(fit_arima)
 sqrt(921.9)
 
 # Forecasting with ARIMA model & evaluating with MAPE/MAE/RMSE
-sales_arima_forecast <- forecast(fit_arima, h=6)
+sales_arima_forecast <- forecast(fit_arima, h = 6)
 accuracy(sales_arima_forecast)
+autoplot(sales_arima_forecast) +
+  ylab("AVG Count Of Sales") +
+  ggtitle("Plot: Shoe Sales ARIMA Forecast") +
+  theme_minimal()
 autoplot(diff_time_series) +
   autolayer(sales_arima_forecast, series = "ARIMA Forecast") +
   xlab("Year") +
@@ -182,9 +214,9 @@ autoplot(diff_time_series) +
   labs(color = "Forecast Type") +
   scale_color_manual(values = c("green"))
 
-print(summary(sales_arima_forecast$mean)) # Mean = 1.64
-test_data$arima <- rep(1.64, 6)
-arima_mape <- MAPE(y_pred = test_data$arima, y_true = unlist(test_data)[1:6])
+print(summary(sales_arima_forecast$mean)) # Mean = 2.46
+test_data$arima <- rep(2.46, 6)
+arima_mape <- MAPE(test_data$arima, unlist(test_data)[1:6])
 arima_mape
 arima_mae <- mean(abs(test_data$arima - unlist(test_data)[1:6]))
 arima_mae
